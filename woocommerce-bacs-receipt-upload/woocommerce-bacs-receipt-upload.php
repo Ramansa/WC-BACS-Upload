@@ -528,7 +528,7 @@ final class WC_BACS_Receipt_Upload
             wp_die(esc_html__('Invalid order', 'wc-bacs-receipt-upload'));
         }
 
-        $order->delete_meta_data(self::META_VERIFIED);
+        $order->update_meta_data(self::META_VERIFIED, 'no');
         $order->add_order_note(__('Admin unverified bank transfer payment. Upload unlocked.', 'wc-bacs-receipt-upload'));
         $order->save();
 
