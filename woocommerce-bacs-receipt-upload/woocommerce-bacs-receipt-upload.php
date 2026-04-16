@@ -43,7 +43,7 @@ final class WC_BACS_Receipt_Upload
 
         add_action('wp', [$this, 'maybe_hide_default_bacs_bank_details']);
         add_action('woocommerce_view_order', [$this, 'render_customer_upload_form'], 1);
-        add_action('woocommerce_thankyou', [$this, 'render_order_received_upload_form'], 25);
+        add_action('woocommerce_order_details_before_customer_details', [$this, 'render_order_received_upload_form'], 5);
         add_action('add_meta_boxes', [$this, 'register_admin_metabox']);
         add_action('woocommerce_admin_order_data_after_order_details', [$this, 'render_admin_order_section']);
 
@@ -260,9 +260,9 @@ final class WC_BACS_Receipt_Upload
         echo '</section>';
     }
 
-    public function render_order_received_upload_form(int $order_id): void
+    public function render_order_received_upload_form($order_or_id): void
     {
-        $order = wc_get_order($order_id);
+        $order = $order_or_id instanceof WC_Order ? $order_or_id : wc_get_order((int) $order_or_id);
         if (! $order instanceof WC_Order || 'bacs' !== $order->get_payment_method()) {
             return;
         }
