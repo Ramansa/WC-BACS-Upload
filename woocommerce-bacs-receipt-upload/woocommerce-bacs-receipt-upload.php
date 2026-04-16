@@ -361,6 +361,12 @@ final class WC_BACS_Receipt_Upload
 
     private function render_delete_form(int $order_id, bool $is_admin): void
     {
+        if ($is_admin) {
+            $delete_url = $this->build_admin_action_url('wc_bacs_receipt_delete', $order_id, 'wc_bacs_receipt_delete_' . $order_id);
+            echo '<p><a class="button button-secondary" href="' . esc_url($delete_url) . '">' . esc_html__('Delete Receipt', 'wc-bacs-receipt-upload') . '</a></p>';
+            return;
+        }
+
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         echo '<input type="hidden" name="action" value="wc_bacs_receipt_delete"/>';
         echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
@@ -372,22 +378,14 @@ final class WC_BACS_Receipt_Upload
 
     private function render_verify_form(int $order_id): void
     {
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-        echo '<input type="hidden" name="action" value="wc_bacs_receipt_verify"/>';
-        echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
-        wp_nonce_field('wc_bacs_receipt_verify_' . $order_id);
-        echo '<p><button type="submit" class="button button-primary">' . esc_html__('Verify Payment (Lock Upload)', 'wc-bacs-receipt-upload') . '</button></p>';
-        echo '</form>';
+        $verify_url = $this->build_admin_action_url('wc_bacs_receipt_verify', $order_id, 'wc_bacs_receipt_verify_' . $order_id);
+        echo '<p><a class="button button-primary" href="' . esc_url($verify_url) . '">' . esc_html__('Verify Payment (Lock Upload)', 'wc-bacs-receipt-upload') . '</a></p>';
     }
 
     private function render_unverify_form(int $order_id): void
     {
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-        echo '<input type="hidden" name="action" value="wc_bacs_receipt_unverify"/>';
-        echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
-        wp_nonce_field('wc_bacs_receipt_unverify_' . $order_id);
-        echo '<p><button type="submit" class="button button-secondary">' . esc_html__('Unverify Payment (Unlock Upload)', 'wc-bacs-receipt-upload') . '</button></p>';
-        echo '</form>';
+        $unverify_url = $this->build_admin_action_url('wc_bacs_receipt_unverify', $order_id, 'wc_bacs_receipt_unverify_' . $order_id);
+        echo '<p><a class="button button-secondary" href="' . esc_url($unverify_url) . '">' . esc_html__('Unverify Payment (Unlock Upload)', 'wc-bacs-receipt-upload') . '</a></p>';
     }
 
     private function render_receipt_preview(int $attachment_id, string $file_url): void
@@ -492,9 +490,9 @@ final class WC_BACS_Receipt_Upload
             wp_die(esc_html__('Unauthorized', 'wc-bacs-receipt-upload'));
         }
 
-        $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+        $order_id = isset($_REQUEST['order_id']) ? absint($_REQUEST['order_id']) : 0;
 
-        if (! $order_id || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? '')), 'wc_bacs_receipt_verify_' . $order_id)) {
+        if (! $order_id || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_REQUEST['_wpnonce'] ?? '')), 'wc_bacs_receipt_verify_' . $order_id)) {
             wp_die(esc_html__('Invalid request', 'wc-bacs-receipt-upload'));
         }
 
@@ -517,9 +515,9 @@ final class WC_BACS_Receipt_Upload
             wp_die(esc_html__('Unauthorized', 'wc-bacs-receipt-upload'));
         }
 
-        $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+        $order_id = isset($_REQUEST['order_id']) ? absint($_REQUEST['order_id']) : 0;
 
-        if (! $order_id || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? '')), 'wc_bacs_receipt_unverify_' . $order_id)) {
+        if (! $order_id || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_REQUEST['_wpnonce'] ?? '')), 'wc_bacs_receipt_unverify_' . $order_id)) {
             wp_die(esc_html__('Invalid request', 'wc-bacs-receipt-upload'));
         }
 
@@ -568,12 +566,12 @@ final class WC_BACS_Receipt_Upload
 
     private function get_valid_order_from_request(string $nonce_prefix): WC_Order
     {
-        $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+        $order_id = isset($_REQUEST['order_id']) ? absint($_REQUEST['order_id']) : 0;
         if (! $order_id) {
             wp_die(esc_html__('Invalid request', 'wc-bacs-receipt-upload'));
         }
 
-        $nonce = sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? ''));
+        $nonce = sanitize_text_field(wp_unslash($_REQUEST['_wpnonce'] ?? ''));
         if (! wp_verify_nonce($nonce, $nonce_prefix . $order_id)) {
             wp_die(esc_html__('Invalid request', 'wc-bacs-receipt-upload'));
         }
@@ -623,7 +621,7 @@ final class WC_BACS_Receipt_Upload
 
     private function is_admin_context(): bool
     {
-        return isset($_POST['is_admin_context']) && '1' === sanitize_text_field(wp_unslash($_POST['is_admin_context']));
+        return isset($_REQUEST['is_admin_context']) && '1' === sanitize_text_field(wp_unslash($_REQUEST['is_admin_context']));
     }
 
     private function is_verified(WC_Order $order): bool
@@ -635,6 +633,19 @@ final class WC_BACS_Receipt_Upload
     {
         return class_exists('\Automattic\WooCommerce\Utilities\OrderUtil')
             && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+    }
+
+    private function build_admin_action_url(string $action, int $order_id, string $nonce_action): string
+    {
+        $url = add_query_arg(
+            [
+                'action' => $action,
+                'order_id' => $order_id,
+            ],
+            admin_url('admin-post.php')
+        );
+
+        return wp_nonce_url($url, $nonce_action);
     }
 
     private function redirect_with_status(int $order_id, string $status, bool $is_admin_context = false): void
