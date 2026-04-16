@@ -206,7 +206,7 @@ final class WC_BACS_Receipt_Upload
 
     private function render_bacs_bank_details(): void
     {
-        $accounts = get_option('woocommerce_bacs_accounts', []);
+        $accounts = $this->get_bacs_accounts();
         if (! is_array($accounts) || empty($accounts)) {
             return;
         }
@@ -225,6 +225,7 @@ final class WC_BACS_Receipt_Upload
                 __('Bank Name', 'wc-bacs-receipt-upload') => $account['bank_name'] ?? '',
                 __('Account Number', 'wc-bacs-receipt-upload') => $account['account_number'] ?? '',
                 __('Sort Code', 'wc-bacs-receipt-upload') => $account['sort_code'] ?? '',
+                __('Routing Number', 'wc-bacs-receipt-upload') => $account['routing_number'] ?? '',
                 __('IBAN', 'wc-bacs-receipt-upload') => $account['iban'] ?? '',
                 __('BIC / Swift', 'wc-bacs-receipt-upload') => $account['bic'] ?? '',
             ];
@@ -241,6 +242,26 @@ final class WC_BACS_Receipt_Upload
         }
 
         echo '</div>';
+    }
+
+    private function get_bacs_accounts(): array
+    {
+        $accounts = get_option('woocommerce_bacs_accounts', []);
+        if (is_array($accounts) && ! empty($accounts)) {
+            return $accounts;
+        }
+
+        $settings = get_option('woocommerce_bacs_settings', []);
+        if (! is_array($settings) || ! isset($settings['account_details'])) {
+            return [];
+        }
+
+        $details = maybe_unserialize($settings['account_details']);
+        if (! is_array($details)) {
+            return [];
+        }
+
+        return array_values(array_filter($details, static fn($account): bool => is_array($account)));
     }
 
     private function render_shared_receipt_ui(WC_Order $order, bool $is_admin, bool $verified): void
