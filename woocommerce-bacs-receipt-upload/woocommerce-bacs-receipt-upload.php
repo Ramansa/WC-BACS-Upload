@@ -250,7 +250,7 @@ final class WC_BACS_Receipt_Upload
             return;
         }
 
-        echo '<div class="woocommerce-info" style="margin-bottom:1em;">';
+        echo '<div class="woocommerce-info" style="margin-bottom:1em;color:#000;">';
         echo '<strong>' . esc_html__('Bank Account Details', 'wc-bacs-receipt-upload') . '</strong>';
 
         foreach ($accounts as $account) {
@@ -258,7 +258,7 @@ final class WC_BACS_Receipt_Upload
                 continue;
             }
 
-            echo '<table class="shop_table shop_table_responsive" style="margin-top:0.75em;">';
+            echo '<table class="shop_table shop_table_responsive" style="margin-top:0.75em;color:#000;">';
             $rows = [
                 __('Account Name', 'wc-bacs-receipt-upload') => $account['account_name'] ?? '',
                 __('Bank Name', 'wc-bacs-receipt-upload') => $account['bank_name'] ?? '',
