@@ -42,6 +42,7 @@ final class WC_BACS_Receipt_Upload
         add_action('admin_init', [$this, 'register_settings']);
 
         add_action('woocommerce_view_order', [$this, 'render_customer_upload_form'], 1);
+        add_action('woocommerce_thankyou', [$this, 'render_order_received_upload_form'], 25);
         add_action('add_meta_boxes', [$this, 'register_admin_metabox']);
         add_action('woocommerce_admin_order_data_after_order_details', [$this, 'render_admin_order_section']);
 
@@ -239,6 +240,27 @@ final class WC_BACS_Receipt_Upload
         echo '</section>';
     }
 
+    public function render_order_received_upload_form(int $order_id): void
+    {
+        $order = wc_get_order($order_id);
+        if (! $order instanceof WC_Order || 'bacs' !== $order->get_payment_method()) {
+            return;
+        }
+
+        if (! $this->can_customer_access_order($order)) {
+            return;
+        }
+
+        $verified = $this->is_verified($order);
+
+        echo '<section class="woocommerce-order-receipt-upload" style="margin:1.5em 0 0;">';
+        echo '<h2>' . esc_html__('Upload BACS Receipt', 'wc-bacs-receipt-upload') . '</h2>';
+        $this->render_bacs_instructions();
+        $this->render_bacs_bank_details();
+        $this->render_shared_receipt_ui($order, false, $verified);
+        echo '</section>';
+    }
+
     private function render_bacs_instructions(): void
     {
         $instructions = __('Please transfer to our bank account details below, then upload your transfer receipt for verification.', 'wc-bacs-receipt-upload');
@@ -355,6 +377,10 @@ final class WC_BACS_Receipt_Upload
         echo '<input type="hidden" name="action" value="wc_bacs_receipt_upload"/>';
         echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
         echo '<input type="hidden" name="is_admin_context" value="' . esc_attr($is_admin ? '1' : '0') . '"/>';
+        $order = wc_get_order($order_id);
+        if ($order instanceof WC_Order) {
+            echo '<input type="hidden" name="order_key" value="' . esc_attr($order->get_order_key()) . '"/>';
+        }
         wp_nonce_field('wc_bacs_receipt_upload_' . $order_id);
         echo '<p><input type="file" name="wc_bacs_receipt_file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf" required/></p>';
         echo '<p><button type="submit" class="button">' . esc_html__('Upload / Replace Receipt', 'wc-bacs-receipt-upload') . '</button></p>';
@@ -373,6 +399,10 @@ final class WC_BACS_Receipt_Upload
         echo '<input type="hidden" name="action" value="wc_bacs_receipt_delete"/>';
         echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
         echo '<input type="hidden" name="is_admin_context" value="' . esc_attr($is_admin ? '1' : '0') . '"/>';
+        $order = wc_get_order($order_id);
+        if ($order instanceof WC_Order) {
+            echo '<input type="hidden" name="order_key" value="' . esc_attr($order->get_order_key()) . '"/>';
+        }
         wp_nonce_field('wc_bacs_receipt_delete_' . $order_id);
         echo '<p><button type="submit" class="button button-secondary">' . esc_html__('Delete Receipt', 'wc-bacs-receipt-upload') . '</button></p>';
         echo '</form>';
@@ -621,11 +651,25 @@ final class WC_BACS_Receipt_Upload
             return $order;
         }
 
-        if (! is_user_logged_in() || (int) $order->get_user_id() !== (int) get_current_user_id()) {
+        if (! $this->can_customer_access_order($order)) {
             wp_die(esc_html__('Unauthorized', 'wc-bacs-receipt-upload'));
         }
 
         return $order;
+    }
+
+    private function can_customer_access_order(WC_Order $order): bool
+    {
+        if (is_user_logged_in() && (int) $order->get_user_id() === (int) get_current_user_id()) {
+            return true;
+        }
+
+        $request_order_key = sanitize_text_field(wp_unslash($_REQUEST['order_key'] ?? $_GET['key'] ?? ''));
+        if ('' === $request_order_key) {
+            return false;
+        }
+
+        return hash_equals($order->get_order_key(), $request_order_key);
     }
 
     private function send_notification_email(WC_Order $order, int $attachment_id): void
@@ -691,7 +735,13 @@ final class WC_BACS_Receipt_Upload
             exit;
         }
 
-        $url = wc_get_endpoint_url('view-order', (string) $order_id, wc_get_page_permalink('myaccount'));
+        $order = wc_get_order($order_id);
+        if ($order instanceof WC_Order && ! is_user_logged_in()) {
+            $url = $order->get_checkout_order_received_url();
+        } else {
+            $url = wc_get_endpoint_url('view-order', (string) $order_id, wc_get_page_permalink('myaccount'));
+        }
+
         $url = add_query_arg('wc_receipt_status', $status, $url);
 
         wp_safe_redirect($url);
