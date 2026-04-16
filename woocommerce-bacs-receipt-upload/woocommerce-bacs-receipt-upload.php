@@ -49,6 +49,8 @@ final class WC_BACS_Receipt_Upload
         add_action('admin_post_wc_bacs_receipt_delete', [$this, 'handle_delete']);
         add_action('admin_post_wc_bacs_receipt_verify', [$this, 'handle_verify']);
         add_action('admin_post_wc_bacs_receipt_unverify', [$this, 'handle_unverify']);
+
+        add_filter('woocommerce_my_account_my_orders_actions', [$this, 'add_upload_action_to_my_orders'], 10, 2);
     }
 
     public function register_settings_page(): void
@@ -414,6 +416,40 @@ final class WC_BACS_Receipt_Upload
 
         echo '<p><strong>' . esc_html__('Current document:', 'wc-bacs-receipt-upload') . '</strong> ';
         echo '<a href="' . esc_url($file_url) . '" download>' . esc_html($filename) . '</a></p>';
+    }
+
+    public function add_upload_action_to_my_orders(array $actions, WC_Order $order): array
+    {
+        if ('bacs' !== $order->get_payment_method()) {
+            return $actions;
+        }
+
+        if ($this->is_verified($order)) {
+            return $actions;
+        }
+
+        $existing_attachment_id = (int) $order->get_meta(self::META_RECEIPT_ID);
+        if ($existing_attachment_id > 0) {
+            return $actions;
+        }
+
+        $upload_url = '';
+        if (isset($actions['view']['url'])) {
+            $upload_url = (string) $actions['view']['url'];
+        } else {
+            $upload_url = $order->get_view_order_url();
+        }
+
+        if ('' === $upload_url) {
+            return $actions;
+        }
+
+        $upload_action = [
+            'url' => $upload_url,
+            'name' => __('Upload', 'wc-bacs-receipt-upload'),
+        ];
+
+        return ['upload' => $upload_action] + $actions;
     }
 
     public function handle_upload(): void
