@@ -18,6 +18,23 @@ final class WC_BACS_Receipt_Upload
     private const OPTION_SUBJECT = 'wc_bacs_receipt_upload_subject';
     private const META_RECEIPT_ID = '_wc_bacs_receipt_upload_attachment_id';
     private const META_VERIFIED = '_wc_bacs_receipt_upload_verified';
+    private const MAX_UPLOAD_BYTES = 10485760; // 10 MB.
+    private const ALLOWED_RECEIPT_MIMES = [
+        'image/jpeg',
+        'image/gif',
+        'image/png',
+        'image/bmp',
+        'image/webp',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+        'application/rtf',
+    ];
 
     public function __construct()
     {
@@ -398,6 +415,11 @@ final class WC_BACS_Receipt_Upload
             $this->redirect_with_status($order->get_id(), 'error', $this->is_admin_context());
         }
 
+        $file_size = isset($_FILES['wc_bacs_receipt_file']['size']) ? (int) $_FILES['wc_bacs_receipt_file']['size'] : 0;
+        if ($file_size <= 0 || $file_size > self::MAX_UPLOAD_BYTES) {
+            $this->redirect_with_status($order->get_id(), 'error', $this->is_admin_context());
+        }
+
         require_once ABSPATH . 'wp-admin/includes/file.php';
         require_once ABSPATH . 'wp-admin/includes/media.php';
         require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -407,6 +429,11 @@ final class WC_BACS_Receipt_Upload
         remove_filter('upload_mimes', [$this, 'add_allowed_mimes']);
 
         if (is_wp_error($attachment_id)) {
+            $this->redirect_with_status($order->get_id(), 'error', $this->is_admin_context());
+        }
+
+        if (! $this->is_allowed_receipt_mime((int) $attachment_id)) {
+            wp_delete_attachment((int) $attachment_id, true);
             $this->redirect_with_status($order->get_id(), 'error', $this->is_admin_context());
         }
 
@@ -487,6 +514,16 @@ final class WC_BACS_Receipt_Upload
         $mimes['rtf'] = 'application/rtf';
 
         return $mimes;
+    }
+
+    private function is_allowed_receipt_mime(int $attachment_id): bool
+    {
+        $mime = get_post_mime_type($attachment_id);
+        if (! is_string($mime) || '' === $mime) {
+            return false;
+        }
+
+        return in_array($mime, self::ALLOWED_RECEIPT_MIMES, true);
     }
 
     private function get_valid_order_from_request(string $nonce_prefix): WC_Order
