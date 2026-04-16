@@ -41,6 +41,7 @@ final class WC_BACS_Receipt_Upload
         add_action('admin_menu', [$this, 'register_settings_page']);
         add_action('admin_init', [$this, 'register_settings']);
 
+        add_action('wp', [$this, 'maybe_hide_default_bacs_bank_details']);
         add_action('woocommerce_view_order', [$this, 'render_customer_upload_form'], 1);
         add_action('woocommerce_thankyou', [$this, 'render_order_received_upload_form'], 25);
         add_action('add_meta_boxes', [$this, 'register_admin_metabox']);
@@ -52,6 +53,25 @@ final class WC_BACS_Receipt_Upload
         add_action('admin_post_wc_bacs_receipt_unverify', [$this, 'handle_unverify']);
 
         add_filter('woocommerce_my_account_my_orders_actions', [$this, 'add_upload_action_to_my_orders'], 10, 2);
+    }
+
+    public function maybe_hide_default_bacs_bank_details(): void
+    {
+        if (! function_exists('is_order_received_page') || ! is_order_received_page()) {
+            return;
+        }
+
+        if (! function_exists('WC') || ! WC()->payment_gateways()) {
+            return;
+        }
+
+        $gateways = WC()->payment_gateways()->payment_gateways();
+        $bacs_gateway = $gateways['bacs'] ?? null;
+        if (! $bacs_gateway instanceof WC_Gateway_BACS) {
+            return;
+        }
+
+        remove_action('woocommerce_thankyou_bacs', [$bacs_gateway, 'thankyou_page']);
     }
 
     public function register_settings_page(): void
