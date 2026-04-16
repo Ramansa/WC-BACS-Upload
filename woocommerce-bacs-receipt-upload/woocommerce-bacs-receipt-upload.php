@@ -24,7 +24,7 @@ final class WC_BACS_Receipt_Upload
         add_action('admin_menu', [$this, 'register_settings_page']);
         add_action('admin_init', [$this, 'register_settings']);
 
-        add_action('woocommerce_view_order', [$this, 'render_customer_upload_form'], 20);
+        add_action('woocommerce_view_order', [$this, 'render_customer_upload_form'], 1);
         add_action('add_meta_boxes', [$this, 'register_admin_metabox']);
 
         add_action('admin_post_wc_bacs_receipt_upload', [$this, 'handle_upload']);
@@ -189,10 +189,27 @@ final class WC_BACS_Receipt_Upload
 
         $verified = $this->is_verified($order);
 
-        echo '<section class="woocommerce-order-receipt-upload" style="margin-top:2em;">';
+        echo '<section class="woocommerce-order-receipt-upload" style="margin-bottom:2em;">';
         echo '<h2>' . esc_html__('Upload Bank Transfer Receipt', 'wc-bacs-receipt-upload') . '</h2>';
+        $this->render_bacs_instructions();
         $this->render_shared_receipt_ui($order, false, $verified);
         echo '</section>';
+    }
+
+    private function render_bacs_instructions(): void
+    {
+        $instructions = '';
+
+        $settings = get_option('woocommerce_bacs_settings', []);
+        if (is_array($settings) && ! empty($settings['instructions'])) {
+            $instructions = (string) $settings['instructions'];
+        }
+
+        if ('' === trim(wp_strip_all_tags($instructions))) {
+            $instructions = __('Please transfer the order total to our bank account and upload your transfer receipt below for verification.', 'wc-bacs-receipt-upload');
+        }
+
+        echo '<div class="woocommerce-info" style="margin-bottom:1em;">' . wp_kses_post(wpautop($instructions)) . '</div>';
     }
 
     private function render_shared_receipt_ui(WC_Order $order, bool $is_admin, bool $verified): void
