@@ -198,18 +198,9 @@ final class WC_BACS_Receipt_Upload
 
     private function render_bacs_instructions(): void
     {
-        $instructions = '';
+        $instructions = __('Please upload your bank transfer receipt below. Bank account details are hidden here to keep this section focused on proof submission.', 'wc-bacs-receipt-upload');
 
-        $settings = get_option('woocommerce_bacs_settings', []);
-        if (is_array($settings) && ! empty($settings['instructions'])) {
-            $instructions = (string) $settings['instructions'];
-        }
-
-        if ('' === trim(wp_strip_all_tags($instructions))) {
-            $instructions = __('Please transfer the order total to our bank account and upload your transfer receipt below for verification.', 'wc-bacs-receipt-upload');
-        }
-
-        echo '<div class="woocommerce-info" style="margin-bottom:1em;">' . wp_kses_post(wpautop($instructions)) . '</div>';
+        echo '<div class="woocommerce-info" style="margin-bottom:1em;">' . esc_html($instructions) . '</div>';
     }
 
     private function render_shared_receipt_ui(WC_Order $order, bool $is_admin, bool $verified): void
