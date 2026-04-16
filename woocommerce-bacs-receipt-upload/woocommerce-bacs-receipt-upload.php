@@ -26,6 +26,7 @@ final class WC_BACS_Receipt_Upload
 
         add_action('woocommerce_view_order', [$this, 'render_customer_upload_form'], 1);
         add_action('add_meta_boxes', [$this, 'register_admin_metabox']);
+        add_action('woocommerce_admin_order_data_after_order_details', [$this, 'render_admin_order_section']);
 
         add_action('admin_post_wc_bacs_receipt_upload', [$this, 'handle_upload']);
         add_action('admin_post_wc_bacs_receipt_delete', [$this, 'handle_delete']);
@@ -142,6 +143,10 @@ final class WC_BACS_Receipt_Upload
 
     public function register_admin_metabox(): void
     {
+        if ($this->is_hpos_enabled()) {
+            return;
+        }
+
         add_meta_box(
             'wc-bacs-receipt-upload-box',
             __('Bank Transfer Receipt', 'wc-bacs-receipt-upload'),
@@ -166,6 +171,23 @@ final class WC_BACS_Receipt_Upload
 
         $verified = $this->is_verified($order);
         $this->render_shared_receipt_ui($order, true, $verified);
+    }
+
+    public function render_admin_order_section(WC_Order $order): void
+    {
+        if (! current_user_can('edit_shop_orders') || ! $this->is_hpos_enabled()) {
+            return;
+        }
+
+        if ('bacs' !== $order->get_payment_method()) {
+            return;
+        }
+
+        echo '<div class="order_data_column" style="width:100%;">';
+        echo '<h3>' . esc_html__('Bank Transfer Receipt', 'wc-bacs-receipt-upload') . '</h3>';
+        $verified = $this->is_verified($order);
+        $this->render_shared_receipt_ui($order, true, $verified);
+        echo '</div>';
     }
 
     public function render_customer_upload_form(int $order_id): void
@@ -287,7 +309,7 @@ final class WC_BACS_Receipt_Upload
         }
 
         if ($existing_url) {
-            echo '<p><strong>' . esc_html__('Current file:', 'wc-bacs-receipt-upload') . '</strong> <a href="' . esc_url($existing_url) . '" target="_blank" rel="noopener noreferrer">' . esc_html(basename((string) $existing_url)) . '</a></p>';
+            $this->render_receipt_preview($existing_attachment_id, $existing_url);
         }
 
         if (! $verified) {
@@ -334,6 +356,34 @@ final class WC_BACS_Receipt_Upload
         wp_nonce_field('wc_bacs_receipt_verify_' . $order_id);
         echo '<p><button type="submit" class="button button-primary">' . esc_html__('Verify Payment (Lock Upload)', 'wc-bacs-receipt-upload') . '</button></p>';
         echo '</form>';
+    }
+
+    private function render_receipt_preview(int $attachment_id, string $file_url): void
+    {
+        $is_image = $attachment_id > 0 ? wp_attachment_is_image($attachment_id) : false;
+        $filename = basename((string) $file_url);
+
+        if ($is_image) {
+            $image = wp_get_attachment_image(
+                $attachment_id,
+                'medium',
+                false,
+                [
+                    'style' => 'max-width:220px;height:auto;border:1px solid #ddd;border-radius:4px;',
+                    'alt' => $filename,
+                ]
+            );
+
+            if ($image) {
+                echo '<p><strong>' . esc_html__('Current image receipt:', 'wc-bacs-receipt-upload') . '</strong></p>';
+                echo '<p><a href="' . esc_url($file_url) . '" target="_blank" rel="noopener noreferrer">' . $image . '</a></p>';
+                echo '<p><a class="button button-secondary" href="' . esc_url($file_url) . '" target="_blank" rel="noopener noreferrer">' . esc_html__('Open Full Size Image', 'wc-bacs-receipt-upload') . '</a></p>';
+                return;
+            }
+        }
+
+        echo '<p><strong>' . esc_html__('Current document:', 'wc-bacs-receipt-upload') . '</strong> ';
+        echo '<a href="' . esc_url($file_url) . '" download>' . esc_html($filename) . '</a></p>';
     }
 
     public function handle_upload(): void
@@ -502,6 +552,12 @@ final class WC_BACS_Receipt_Upload
     private function is_verified(WC_Order $order): bool
     {
         return 'yes' === (string) $order->get_meta(self::META_VERIFIED);
+    }
+
+    private function is_hpos_enabled(): bool
+    {
+        return class_exists('\Automattic\WooCommerce\Utilities\OrderUtil')
+            && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
     }
 
     private function redirect_with_status(int $order_id, string $status, bool $is_admin_context = false): void
