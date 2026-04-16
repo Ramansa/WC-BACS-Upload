@@ -6,7 +6,7 @@ A WordPress plugin that adds a **bank transfer receipt upload** section on the W
 
 - Shows upload tools only for orders paid via **Direct Bank Transfer (BACS)**.
 - Customer can upload proof **after order placement** (not in cart/checkout).
-- Customer order page shows a short upload instruction above the upload area (without bank account details).
+- Customer order page shows transfer instructions and bank account info pulled from WooCommerce BACS settings.
 - Admin can also upload/view/delete receipt from WooCommerce order edit page.
 - Customer can view, delete, and re-upload until admin verifies payment.
 - Admin can click **Verify Payment (Lock Upload)** to stop any further upload/delete for that order.

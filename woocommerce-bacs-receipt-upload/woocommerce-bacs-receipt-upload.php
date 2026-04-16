@@ -192,15 +192,55 @@ final class WC_BACS_Receipt_Upload
         echo '<section class="woocommerce-order-receipt-upload" style="margin-bottom:2em;">';
         echo '<h2>' . esc_html__('Upload Bank Transfer Receipt', 'wc-bacs-receipt-upload') . '</h2>';
         $this->render_bacs_instructions();
+        $this->render_bacs_bank_details();
         $this->render_shared_receipt_ui($order, false, $verified);
         echo '</section>';
     }
 
     private function render_bacs_instructions(): void
     {
-        $instructions = __('Please upload your bank transfer receipt below. Bank account details are hidden here to keep this section focused on proof submission.', 'wc-bacs-receipt-upload');
+        $instructions = __('Please transfer to our bank account details below, then upload your transfer receipt for verification.', 'wc-bacs-receipt-upload');
 
         echo '<div class="woocommerce-info" style="margin-bottom:1em;">' . esc_html($instructions) . '</div>';
+    }
+
+    private function render_bacs_bank_details(): void
+    {
+        $accounts = get_option('woocommerce_bacs_accounts', []);
+        if (! is_array($accounts) || empty($accounts)) {
+            return;
+        }
+
+        echo '<div class="woocommerce-info" style="margin-bottom:1em;">';
+        echo '<strong>' . esc_html__('Bank Account Details', 'wc-bacs-receipt-upload') . '</strong>';
+
+        foreach ($accounts as $account) {
+            if (! is_array($account)) {
+                continue;
+            }
+
+            echo '<table class="shop_table shop_table_responsive" style="margin-top:0.75em;">';
+            $rows = [
+                __('Account Name', 'wc-bacs-receipt-upload') => $account['account_name'] ?? '',
+                __('Bank Name', 'wc-bacs-receipt-upload') => $account['bank_name'] ?? '',
+                __('Account Number', 'wc-bacs-receipt-upload') => $account['account_number'] ?? '',
+                __('Sort Code', 'wc-bacs-receipt-upload') => $account['sort_code'] ?? '',
+                __('IBAN', 'wc-bacs-receipt-upload') => $account['iban'] ?? '',
+                __('BIC / Swift', 'wc-bacs-receipt-upload') => $account['bic'] ?? '',
+            ];
+
+            foreach ($rows as $label => $value) {
+                $clean = trim((string) $value);
+                if ('' === $clean) {
+                    continue;
+                }
+                echo '<tr><th>' . esc_html($label) . '</th><td>' . esc_html($clean) . '</td></tr>';
+            }
+
+            echo '</table>';
+        }
+
+        echo '</div>';
     }
 
     private function render_shared_receipt_ui(WC_Order $order, bool $is_admin, bool $verified): void
