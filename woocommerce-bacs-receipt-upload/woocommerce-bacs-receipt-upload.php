@@ -48,6 +48,7 @@ final class WC_BACS_Receipt_Upload
         add_action('admin_post_wc_bacs_receipt_upload', [$this, 'handle_upload']);
         add_action('admin_post_wc_bacs_receipt_delete', [$this, 'handle_delete']);
         add_action('admin_post_wc_bacs_receipt_verify', [$this, 'handle_verify']);
+        add_action('admin_post_wc_bacs_receipt_unverify', [$this, 'handle_unverify']);
     }
 
     public function register_settings_page(): void
@@ -337,8 +338,12 @@ final class WC_BACS_Receipt_Upload
             }
         }
 
-        if ($is_admin && ! $verified) {
-            $this->render_verify_form($order_id);
+        if ($is_admin) {
+            if (! $verified) {
+                $this->render_verify_form($order_id);
+            } else {
+                $this->render_unverify_form($order_id);
+            }
         }
     }
 
@@ -372,6 +377,16 @@ final class WC_BACS_Receipt_Upload
         echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
         wp_nonce_field('wc_bacs_receipt_verify_' . $order_id);
         echo '<p><button type="submit" class="button button-primary">' . esc_html__('Verify Payment (Lock Upload)', 'wc-bacs-receipt-upload') . '</button></p>';
+        echo '</form>';
+    }
+
+    private function render_unverify_form(int $order_id): void
+    {
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        echo '<input type="hidden" name="action" value="wc_bacs_receipt_unverify"/>';
+        echo '<input type="hidden" name="order_id" value="' . esc_attr((string) $order_id) . '"/>';
+        wp_nonce_field('wc_bacs_receipt_unverify_' . $order_id);
+        echo '<p><button type="submit" class="button button-secondary">' . esc_html__('Unverify Payment (Unlock Upload)', 'wc-bacs-receipt-upload') . '</button></p>';
         echo '</form>';
     }
 
@@ -490,6 +505,31 @@ final class WC_BACS_Receipt_Upload
 
         $order->update_meta_data(self::META_VERIFIED, 'yes');
         $order->add_order_note(__('Admin verified bank transfer payment. Upload locked.', 'wc-bacs-receipt-upload'));
+        $order->save();
+
+        wp_safe_redirect(wp_get_referer() ?: admin_url('post.php?post=' . $order_id . '&action=edit'));
+        exit;
+    }
+
+    public function handle_unverify(): void
+    {
+        if (! current_user_can('edit_shop_orders')) {
+            wp_die(esc_html__('Unauthorized', 'wc-bacs-receipt-upload'));
+        }
+
+        $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
+
+        if (! $order_id || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? '')), 'wc_bacs_receipt_unverify_' . $order_id)) {
+            wp_die(esc_html__('Invalid request', 'wc-bacs-receipt-upload'));
+        }
+
+        $order = wc_get_order($order_id);
+        if (! $order instanceof WC_Order || 'bacs' !== $order->get_payment_method()) {
+            wp_die(esc_html__('Invalid order', 'wc-bacs-receipt-upload'));
+        }
+
+        $order->update_meta_data(self::META_VERIFIED, 'no');
+        $order->add_order_note(__('Admin unverified bank transfer payment. Upload unlocked.', 'wc-bacs-receipt-upload'));
         $order->save();
 
         wp_safe_redirect(wp_get_referer() ?: admin_url('post.php?post=' . $order_id . '&action=edit'));
