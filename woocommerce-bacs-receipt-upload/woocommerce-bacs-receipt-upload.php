@@ -292,7 +292,7 @@ final class WC_BACS_Receipt_Upload
 
     private function render_bacs_instructions(): void
     {
-        $instructions = __('Please transfer to our bank account details below, then upload your transfer receipt for verification.', 'wc-bacs-receipt-upload');
+        $instructions = __('Please make payment via DuitNow using our Business Registration Number below, then upload your payment receipt for verification.', 'wc-bacs-receipt-upload');
 
         echo '<div class="woocommerce-info" style="margin-bottom:1em;">' . esc_html($instructions) . '</div>';
     }
@@ -316,7 +316,7 @@ final class WC_BACS_Receipt_Upload
             $rows = [
                 __('Account Name', 'wc-bacs-receipt-upload') => $account['account_name'] ?? '',
                 __('Transfer Type', 'wc-bacs-receipt-upload') => $account['bank_name'] ?? '',
-                __('Account Number', 'wc-bacs-receipt-upload') => $account['account_number'] ?? '',
+                __('Business Registration Number', 'wc-bacs-receipt-upload') => $account['account_number'] ?? '',
                 __('Sort Code', 'wc-bacs-receipt-upload') => $account['sort_code'] ?? '',
                 __('Routing Number', 'wc-bacs-receipt-upload') => $account['routing_number'] ?? '',
                 __('IBAN', 'wc-bacs-receipt-upload') => $account['iban'] ?? '',
@@ -376,7 +376,7 @@ final class WC_BACS_Receipt_Upload
         if ($verified) {
             echo '<p><strong>' . esc_html__('Payment is verified by admin. Upload is locked for this order.', 'wc-bacs-receipt-upload') . '</strong></p>';
         } else {
-            echo '<p>' . esc_html__('Upload or replace proof of bank transfer anytime before verification.', 'wc-bacs-receipt-upload') . '</p>';
+            echo '<p>' . esc_html__('Upload or replace your payment receipt anytime before verification.', 'wc-bacs-receipt-upload') . '</p>';
         }
 
         if ($existing_url) {
