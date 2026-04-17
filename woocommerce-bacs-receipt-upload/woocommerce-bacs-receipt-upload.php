@@ -256,7 +256,7 @@ final class WC_BACS_Receipt_Upload
         $verified = $this->is_verified($order);
 
         echo '<section class="woocommerce-order-receipt-upload" style="margin-bottom:2em;">';
-        echo '<h2>' . esc_html__('Upload Bank Transfer Receipt', 'wc-bacs-receipt-upload') . '</h2>';
+        echo '<h2>' . esc_html__('Upload DuitNow Transfer Receipt', 'wc-bacs-receipt-upload') . '</h2>';
         $this->render_bacs_instructions();
         $this->render_bacs_bank_details();
         $this->render_shared_receipt_ui($order, false, $verified);
