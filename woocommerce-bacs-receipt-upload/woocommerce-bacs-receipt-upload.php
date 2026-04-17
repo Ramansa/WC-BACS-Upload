@@ -315,7 +315,7 @@ final class WC_BACS_Receipt_Upload
             echo '<table class="shop_table shop_table_responsive" style="margin-top:0.75em;color:#000;">';
             $rows = [
                 __('Account Name', 'wc-bacs-receipt-upload') => $account['account_name'] ?? '',
-                __('Bank Name', 'wc-bacs-receipt-upload') => $account['bank_name'] ?? '',
+                __('Transfer Type', 'wc-bacs-receipt-upload') => $account['bank_name'] ?? '',
                 __('Account Number', 'wc-bacs-receipt-upload') => $account['account_number'] ?? '',
                 __('Sort Code', 'wc-bacs-receipt-upload') => $account['sort_code'] ?? '',
                 __('Routing Number', 'wc-bacs-receipt-upload') => $account['routing_number'] ?? '',
